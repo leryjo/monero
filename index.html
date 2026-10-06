@@ -2,24 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Monero RandomX Miner</title>
+  <title>XMR Miner (Personal)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 32px auto; padding: 0 16px; }
-    #info { background: #0b0b0b; color: #0f0; padding: 12px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; }
+    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 40px auto; padding: 0 16px; background: #111; color: #eee; }
+    #s { background: #000; color: #0f0; padding: 14px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; min-height: 100px; }
+    button { margin-top: 16px; padding: 14px 28px; font-size: 18px; cursor: pointer; width: 100%; }
   </style>
 </head>
 <body>
-  <h1>Mining Monero (RandomX)</h1>
-  <p>Progress: <a href="https://moneroocean.stream" target="_blank">MoneroOcean</a></p>
-  <div id="info">Loading miner...</div>
+  <h2>Monero RandomX — Personal</h2>
+  <div id="s">Loading...</div>
+  <button id="go">START / RESUME MINING</button>
 
-  <!--
-    PENGATURAN (ubah di sini):
-    data-workload  = % CPU (10–80)     → semakin tinggi semakin berat
-    data-max-threads = batas thread    → contoh 2 / 4 / 6
-    data-mode      = light (ringan) / full (lebih kencang, butuh RAM besar)
-  -->
   <script defer crossorigin="anonymous"
     src="https://cdn.jsdelivr.net/gh/aa022/RandomX-bonanza@main/dist/embed.js"
     data-wallet="85KNrXfutegLDjeRiaBjkUVjCU2A3jkDq8s79A6M1dXg3dL4zZcNwh9UZkSL2HrGmZhoVuFru53mQH8MMz97nTzc47kk9kr"
@@ -28,59 +23,55 @@
     data-proxy="wss://gxmail.dev"
     data-mode="full"
     data-workload="100"
-    data-max-threads="8"
-    data-worker-name="web1"
-    data-quickstart="true">
+    data-max-threads="4"
+    data-worker-name="laptop1"
+    data-headless="true"
+    data-auto="false">
   </script>
 
   <script>
-    const info = document.getElementById('info');
+    const box = document.getElementById('s');
+    const btn = document.getElementById('go');
     let rx = null;
 
-    function show(msg) {
-      info.textContent = msg;
-    }
+    function show(t) { box.textContent = t; }
 
-    window.addEventListener('randomx:ready', (e) => {
+    window.addEventListener('randomx:ready', e => {
       rx = e.detail.instance;
-      show('Miner siap.\nKlik di mana saja di halaman ini untuk mulai mining...');
-
-      // Auto start saat user klik / sentuh halaman (wajib trusted gesture)
-      const startOnce = (ev) => {
-        document.removeEventListener('click', startOnce);
-        document.removeEventListener('touchstart', startOnce);
-
-        show('Starting...');
-        const ok = rx.start(ev);
-        if (!ok) {
-          rx.requestConsent(ev);
-          rx.on('consent-request', (d) => {
-            d.accept();
-            show('Mining started...');
-          });
-        }
-      };
-
-      document.addEventListener('click', startOnce, { once: true });
-      document.addEventListener('touchstart', startOnce, { once: true });
+      show('Siap. Klik tombol di bawah (sekali saja).');
     });
 
-    window.addEventListener('randomx:error', (e) => {
+    window.addEventListener('randomx:error', e => {
       show('Error: ' + JSON.stringify(e.detail));
     });
 
-    // Update hashrate tiap 2 detik
+    function startMining(ev) {
+      if (!rx) { show('Belum siap...'); return; }
+      show('Starting...');
+      let ok = rx.start(ev);
+      if (!ok) {
+        rx.requestConsent(ev);
+        rx.on('consent-request', d => {
+          d.accept();
+          show('Mining...');
+        });
+      }
+    }
+
+    btn.addEventListener('click', startMining);
+
+    // Update status
     setInterval(() => {
-      if (!rx || !rx.state) return;
+      if (!rx?.state) return;
       const s = rx.state;
-      if (s.running || s.phase === 'mining') {
+      if (s.phase === 'mining' || s.running) {
         show(
-          'Status : ' + s.phase + '\n' +
-          'Hashrate: ' + (s.hashrate || 0) + ' H/s\n' +
-          'Accepted: ' + (s.accepted || 0) + '\n' +
-          'Rejected: ' + (s.rejected || 0) + '\n' +
-          'Threads : ' + (s.threads || '-') + '\n' +
-          'Workload: ' + (s.workload || '-') + '%'
+          'MINING\n' +
+          'Hashrate : ' + (s.hashrate || 0) + ' H/s\n' +
+          'Accepted : ' + (s.accepted || 0) + '\n' +
+          'Rejected : ' + (s.rejected || 0) + '\n' +
+          'Threads  : ' + (s.threads || '-') + '\n' +
+          'CPU      : ' + (s.workload || '-') + '%'
         );
       }
     }, 2000);
